@@ -1,14 +1,19 @@
 package uk.org.landeg.jat;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -19,6 +24,7 @@ import org.springframework.web.client.RestTemplate;
 
 import uk.org.landeg.jat.api.model.TodoRequestModel;
 import uk.org.landeg.jat.api.model.TodoResponseModel;
+import uk.org.landeg.jat.jpa.repo.TodoRepository;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment=WebEnvironment.RANDOM_PORT)
@@ -30,9 +36,33 @@ public class TodoPersistenceTest {
 
 	private String apiEndpoint = null;
 
+	@Autowired
+	private TodoRepository todoRepo;
+
 	@BeforeClass
 	public static void beforeClass() {
 		restTemplate = new RestTemplate();
+	}
+
+	@After
+	public void teardown() {
+		todoRepo.deleteAll();
+	}
+
+	@Test
+	public void assertRetrieveAll() {
+		final String id1 = createTodo("MESSAGE1", HttpStatus.CREATED).getBody().getId();
+		final String id2 = createTodo("MESSAGE2", HttpStatus.CREATED).getBody().getId();
+		restTemplate.getForEntity(getApiEndpoint(), List.class);
+		ParameterizedTypeReference<List<TodoResponseModel>> responseType = new ParameterizedTypeReference<List<TodoResponseModel>>() {};
+		final List<String> ids = restTemplate.exchange(getApiEndpoint(), HttpMethod.GET, HttpEntity.EMPTY, responseType)
+			.getBody()
+			.stream()
+			.map(todo -> todo.getId())
+			.collect(Collectors.toList());
+		Assert.assertEquals(2, ids.size());
+		Assert.assertTrue(ids.contains(id1));
+		Assert.assertTrue(ids.contains(id2));
 	}
 
 	@Test
