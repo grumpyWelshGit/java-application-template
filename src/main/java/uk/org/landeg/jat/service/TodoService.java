@@ -1,9 +1,14 @@
 package uk.org.landeg.jat.service;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.datatype.jdk8.StreamSerializer;
 
 import uk.org.landeg.jat.annotation.qualifier.JpaFromAdapterType;
 import uk.org.landeg.jat.annotation.qualifier.JpaToAdapterType;
@@ -42,7 +47,10 @@ public class TodoService {
 	private TodoRepository todoRepository;
 
 	public Iterable<TodoResponseModel> getTodos() {
-		return new ArrayList<>();
+		return StreamSupport.stream(todoRepository.findAll().spliterator(), false)
+			.map(jpa -> fromJpaAdapter.fromJpa(jpa, null))
+			.map(internal -> toRestAdapter.toModel(internal))
+			.collect(Collectors.toList());
 	}
 
 	public TodoResponseModel findTodo(String id) {
