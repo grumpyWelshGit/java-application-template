@@ -10,6 +10,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 @Qualifier
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.FIELD})
-public @interface RestToAdapterType {
+public @interface ToRestAdapterType {
 	Class<?> value ();
 }

@@ -1,82 +1,75 @@
 package uk.org.landeg.jat.service;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.datatype.jdk8.StreamSerializer;
-
+import uk.org.landeg.jat.annotation.qualifier.FromRestAdapterType;
 import uk.org.landeg.jat.annotation.qualifier.JpaFromAdapterType;
 import uk.org.landeg.jat.annotation.qualifier.JpaToAdapterType;
-import uk.org.landeg.jat.annotation.qualifier.RestFromAdapterType;
-import uk.org.landeg.jat.annotation.qualifier.RestToAdapterType;
+import uk.org.landeg.jat.annotation.qualifier.ToRestAdapterType;
 import uk.org.landeg.jat.api.error.NotFoundClientException;
 import uk.org.landeg.jat.api.model.TodoRequestModel;
 import uk.org.landeg.jat.api.model.TodoResponseModel;
-import uk.org.landeg.jat.api.model.adapter.FromRestAdapter;
-import uk.org.landeg.jat.api.model.adapter.ToRestAdapter;
-import uk.org.landeg.jat.jpa.adapter.FromJpaAdapter;
-import uk.org.landeg.jat.jpa.adapter.ToJpaAdatper;
 import uk.org.landeg.jat.jpa.domain.TodoJpa;
 import uk.org.landeg.jat.jpa.repo.TodoRepository;
 import uk.org.landeg.jat.objects.TodoInternal;
+import uk.org.landeg.jat.transformer.GenericTransformer;
 
 @Service
 public class TodoService {
 	@Autowired
 	@JpaToAdapterType(TodoJpa.class)
-	private ToJpaAdatper<TodoJpa, TodoInternal> toJpaAdapter;
+	private GenericTransformer<TodoInternal, TodoJpa> toJpaAdapter;
 
 	@Autowired
 	@JpaFromAdapterType(TodoJpa.class)
-	private FromJpaAdapter<TodoJpa, TodoInternal> fromJpaAdapter;
+	private GenericTransformer<TodoJpa, TodoInternal> fromJpaAdapter;
 
 	@Autowired
-	@RestFromAdapterType(TodoRequestModel.class)
-	private FromRestAdapter<TodoRequestModel, TodoInternal> fromRestAdapter;
+	@FromRestAdapterType(TodoRequestModel.class)
+	private GenericTransformer<TodoRequestModel, TodoInternal> fromRestAdapter;
 
 	@Autowired
-	@RestToAdapterType(TodoResponseModel.class)
-	private ToRestAdapter<TodoResponseModel, TodoInternal> toRestAdapter;
+	@ToRestAdapterType(TodoResponseModel.class)
+	private GenericTransformer<TodoInternal, TodoResponseModel> toRestAdapter;
 
 	@Autowired
 	private TodoRepository todoRepository;
 
 	public Iterable<TodoResponseModel> getTodos() {
 		return StreamSupport.stream(todoRepository.findAll().spliterator(), false)
-			.map(jpa -> fromJpaAdapter.fromJpa(jpa, null))
-			.map(internal -> toRestAdapter.toModel(internal))
+			.map(jpa -> fromJpaAdapter.apply(jpa, null))
+			.map(internal -> toRestAdapter.apply(internal))
 			.collect(Collectors.toList());
 	}
 
 	public TodoResponseModel findTodo(String id) {
-		return toRestAdapter.toModel(fromJpaAdapter.fromJpa(retrieveTodo(id), null));
+		return toRestAdapter.apply(fromJpaAdapter.apply(retrieveTodo(id), null));
 	}
 
 	public TodoResponseModel saveTodo(final TodoRequestModel model) {
-		TodoInternal todo = fromRestAdapter.fromRest(model);
-		TodoJpa jpa = toJpaAdapter.toJpa(todo, null);
+		TodoInternal todo = fromRestAdapter.apply(model);
+		TodoJpa jpa = toJpaAdapter.apply(todo, null);
 
 		jpa = todoRepository.save(jpa);
 
-		todo = fromJpaAdapter.fromJpa(jpa, todo);
-		return toRestAdapter.toModel(todo); 
+		todo = fromJpaAdapter.apply(jpa, todo);
+		return toRestAdapter.apply(todo); 
 	}
 
 	public TodoResponseModel updateTodo(final String id, final TodoRequestModel model) {
 		final TodoJpa jpa = retrieveTodo(id);
-		final TodoInternal update = fromRestAdapter.fromRest(model);
+		final TodoInternal update = fromRestAdapter.apply(model);
 		
-		toJpaAdapter.toJpa(update, jpa);
+		toJpaAdapter.apply(update, jpa);
 
 		todoRepository.save(jpa);
 
-		final TodoInternal updated = fromJpaAdapter.fromJpa(jpa, null);
-		return toRestAdapter.toModel(updated);
+		final TodoInternal updated = fromJpaAdapter.apply(jpa, null);
+		return toRestAdapter.apply(updated);
 	}
 	
 	public void deleteTodo(String id) {
