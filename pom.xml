@@ -14,9 +14,11 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>java-app-template</name>
 	<description>java-app-template</description>
+	<packaging>${packaging.type}</packaging>
 
 	<properties>
 		<java.version>1.8</java.version>
+		<packaging.type>jar</packaging.type>
 	</properties>
 
 	<dependencies>
@@ -105,6 +107,27 @@
 					<scope>runtime</scope>
 				</dependency>
 			</dependencies>
+		</profile>
+		<profile>
+			<id>build-as-war</id>
+			<activation>
+				<activeByDefault>false</activeByDefault>
+			</activation>
+			<properties>
+				<packaging.type>war</packaging.type>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>maven-war-plugin</artifactId>
+						<version>2.4</version>
+						<configuration>
+							<warSourceDirectory>WebContent</warSourceDirectory>
+							<failOnMissingWebXml>false</failOnMissingWebXml>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 	</profiles>
 </project>
